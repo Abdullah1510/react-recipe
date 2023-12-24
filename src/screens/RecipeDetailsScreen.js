@@ -1,190 +1,174 @@
-import {
-	Image,
-	SafeAreaView,
-	StyleSheet,
-	Text,
-	View,
-	Pressable,
-	Dimensions,
-	ScrollView,
-} from "react-native";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { Image, View, Text, ScrollView, Dimensions, StyleSheet } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
+import { TouchableOpacity } from "react-native";
 
-const RecipeDetailsScreen = ({ navigation, route }) => {
-	const { item } = route.params;
+const RecipeDetailsScreen = ({ route }) => {
+  const { item } = route.params;
+  const [meal, setMeal] = useState(null);
 
-	console.log(item);
-	return (
-		<View style={{ backgroundColor: item.color, flex: 1 }}>
-			<SafeAreaView style={{ flexDirection: "row", marginHorizontal: 16 }}>
-				<Pressable style={{ flex: 1 }} onPress={() => navigation.goBack()}>
-					<FontAwesome name={"arrow-circle-left"} size={28} color="white" />
-				</Pressable>
+  useEffect(() => {
+    const getMealData = async () => {
+      try {
+        const response = await fetch(`https://themealdb.com/api/json/v1/1/lookup.php?i=${item.idMeal}`);
+        const data = await response.json();
+        if (data && data.meals) {
+          setMeal(data.meals[0]);
+        }
+      } catch (err) {
+        console.log('Error: ', err.message);
+      }
+    };
 
-				<FontAwesome name={"heart-o"} size={28} color="white" />
-			</SafeAreaView>
-			<View
-				style={{
-					backgroundColor: "#fff",
-					flex: 1,
-					marginTop: 140,
-					borderTopLeftRadius: 56,
-					borderTopRightRadius: 56,
-					alignItems: "center",
-					paddingHorizontal: 16,
-				}}
-			>
-				<View
-					style={{
-						// backgroundColor: "red",
-						height: 300,
-						width: 300,
-						position: "absolute",
-						top: -150,
-						// marginBottom: 130,
-					}}
-				>
-					<Image
-						source={item.image}
-						style={{
-							width: "100%",
-							height: "100%",
-							resizeMode: "contain",
-						}}
-					/>
-				</View>
+    getMealData();
+  }, [item.idMeal]);
 
-				{/* Recipe Name */}
-				<Text style={{ marginTop: 150, fontSize: 28, fontWeight: "bold" }}>
-					{item.name}
-				</Text>
+  const saveProduct = async () => {
+    try {
+      const existingProducts = await AsyncStorage.getItem('savedProducts');
+      const parsedExistingProducts = existingProducts ? JSON.parse(existingProducts) : [];
 
-				<View style={{ flex: 1 }}>
-					<ScrollView showsVerticalScrollIndicator={false}>
-						{/* Recipe Description */}
-						<Text style={{ fontSize: 20, marginVertical: 16 }}>
-							{item.description}
-						</Text>
+      const existingProductIndex = parsedExistingProducts.findIndex(
+        (savedProduct) => savedProduct.idMeal === item.idMeal
+      );
 
-						{/* Recipe Extra Details */}
+      if (existingProductIndex === -1) {
+        parsedExistingProducts.push(item);
+        await AsyncStorage.setItem('savedProducts', JSON.stringify(parsedExistingProducts));
+        alert('Product saved successfully!');
+      } else {
+        alert('Product already saved!');
+      }
+    } catch (error) {
+      console.error('Error saving product:', error);
+    }
+  };
 
-						<View
-							style={{
-								flexDirection: "row",
-								justifyContent: "space-between",
-								// width: "100%",
-								// backgroundColor: "green",
-							}}
-						>
-							<View
-								style={{
-									backgroundColor: "rgba(255, 0, 0, 0.38)",
-									// paddingHorizontal: 16,
-									paddingVertical: 26,
-									borderRadius: 8,
-									alignItems: "center",
-									width: 100,
-								}}
-							>
-								<Text style={{ fontSize: 40 }}>⏰</Text>
-								<Text style={{ fontSize: 20, fontWeight: 400 }}>
-									{item.time}
-								</Text>
-							</View>
-							<View
-								style={{
-									backgroundColor: "rgba(135, 206, 235, 0.8)",
-									// paddingHorizontal: 16,
-									paddingVertical: 26,
-									borderRadius: 8,
-									alignItems: "center",
-									width: 100,
-									// marginHorizontal: 24,
-								}}
-							>
-								<Text style={{ fontSize: 40 }}>🥣</Text>
-								<Text style={{ fontSize: 20, fontWeight: 400 }}>
-									{item.difficulty}
-								</Text>
-							</View>
-							<View
-								style={{
-									backgroundColor: "rgba(255, 165, 0, 0.48)",
-									// paddingHorizontal: 16,
-									paddingVertical: 26,
-									borderRadius: 8,
-									alignItems: "center",
-									width: 100,
-								}}
-							>
-								<Text style={{ fontSize: 40 }}>🔥</Text>
-								<Text style={{ fontSize: 20, fontWeight: 400 }}>
-									{item.calories}
-								</Text>
-							</View>
-						</View>
+  const renderIngredients = () => {
+    const ingredients = [];
 
-						{/* Recipe Ingredients  */}
+    for (let i = 1; i <= 20; i++) {
+      const ingredient = meal?.[`strIngredient${i}`];
+      const measure = meal?.[`strMeasure${i}`];
 
-						<View style={{ alignSelf: "flex-start", marginVertical: 22 }}>
-							<Text
-								style={{ fontSize: 22, fontWeight: "600", marginBottom: 6 }}
-							>
-								Ingredients:
-							</Text>
+      if (ingredient) {
+        ingredients.push(
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <View style={{ height: 15, width: 15, backgroundColor: '#F59E0B', borderRadius: 8 }} />
+            <Text style={{ fontSize: 17, fontWeight: 'bold', color: '#374151', marginLeft: 8 }}>
+              {measure}
+            </Text>
+            <Text style={{ fontSize: 17, fontWeight: 'normal', color: '#4B5563', marginLeft: 4 }}>
+              {ingredient}
+            </Text>
+          </View>
+        );
+      }
+    }
 
-							{item.ingredients.map((ingredient, index) => {
-								return (
-									<View
-										style={{
-											flexDirection: "row",
-											alignItems: "center",
-											marginVertical: 4,
-										}}
-										key={index}
-									>
-										<View
-											style={{
-												backgroundColor: "red",
-												height: 10,
-												width: 10,
-												borderRadius: 5,
-											}}
-										></View>
-										<Text style={{ fontSize: 18, marginLeft: 6 }}>
-											{ingredient}
-										</Text>
-									</View>
-								);
-							})}
-						</View>
+    return ingredients;
+  };
 
-						{/* Recipe Steps */}
+  return (<ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={styles.imageContainer}>
+      <Image
+        source={{ uri: item.strMealThumb }}
+        style={styles.image}
+      />
+    </View>
 
-						<View style={{ alignSelf: "flex-start", marginVertical: 22 }}>
-							<Text
-								style={{ fontSize: 22, fontWeight: "600", marginBottom: 6 }}
-							>
-								Steps:
-							</Text>
+    <View style={styles.contentContainer}>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>
+          {item.strMeal}
+        </Text>
+        <TouchableOpacity onPress={saveProduct}>
+          <FontAwesome name={'heart-o'} size={28} color={'#000'} />
+        </TouchableOpacity>
+      </View>
 
-							{item.steps.map((step, index) => {
-								return (
-									<Text
-										key={index}
-										style={{ fontSize: 18, marginLeft: 6, marginVertical: 6 }}
-									>{`${index + 1} ) ${step}`}</Text>
-								);
-							})}
-						</View>
-					</ScrollView>
-				</View>
-			</View>
-		</View>
-	);
+      <Text style={styles.category}>
+        {meal?.strCategory}
+      </Text>
+
+      <Text style={styles.subHeader}>
+        Description:
+      </Text>
+      <ScrollView style={styles.description} showsVerticalScrollIndicator={false}>
+        <Text style={styles.descriptionText}>
+          {meal?.strInstructions}
+        </Text>
+      </ScrollView>
+
+      <Text style={styles.subHeader}>
+        Ingredients:
+      </Text>
+      <ScrollView style={styles.ingredients} showsVerticalScrollIndicator={false}>
+        <View style={styles.ingredientsContainer}>
+          {renderIngredients()}
+        </View>
+      </ScrollView>
+    </View>
+  </ScrollView>
+  );
 };
 
-export default RecipeDetailsScreen;
 
-const styles = StyleSheet.create({});
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: '#fff',
+  },
+  imageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  image: {
+    width: '90%',
+    height: Dimensions.get('window').height * 0.5,
+    resizeMode: 'contain',
+    alignSelf: 'center',
+    borderRadius: 12,
+  },
+  contentContainer: {
+    padding: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  category: {
+    fontSize: 18,
+    marginBottom: 5,
+    color: 'black',
+  },
+  subHeader: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: 'black',
+  },
+  description: {
+    maxHeight: 400,
+  },
+  descriptionText: {
+    fontSize: 16,
+    color: 'black',
+  },
+  ingredients: {
+    maxHeight: 400,
+  },
+  ingredientsContainer: {
+    marginTop: 8,
+    marginLeft: 12,
+  },
+});
+
+export default RecipeDetailsScreen;
